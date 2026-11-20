@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cronache di Oakhaven - D&D 5e Mobile</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cinzel (Titoli Fantasy) e Crimson Pro / Inter (Lettura) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tone.js per effetti sonori procedurali (dadi, spade, magia) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        fantasy: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        parchment: {
+                            950: '#0f0c0a',
+                            900: '#181310',
+                            800: '#241c17',
+                            700: '#352921',
+                            200: '#e6dcc8',
+                            100: '#f4efe6',
+                        },
+                        gold: {
+                            400: '#facc15',
+                            500: '#d4af37',
+                            600: '#aa8822',
+                        },
+                        blood: {
+                            600: '#991b1b',
+                            700: '#7f1d1d',
+                            900: '#450a0a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Stili Custom Dark Fantasy & Animazioni */
+        body {
+            background-color: #0f0c0a;
+            color: #e6dcc8;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+
+        .fantasy-border {
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.75), 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+        }
+
+        /* Scrollbar sottile per l'area narrativa */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #181310;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #352921;
+            border-radius: 9999px;
+        }
+
+        /* Animazione Tiro Dado */
+        @keyframes diceRoll {
+            0% { transform: scale(0.5) rotate(0deg); opacity: 0; }
+            40% { transform: scale(1.25) rotate(220deg); opacity: 1; }
+            70% { transform: scale(0.95) rotate(330deg); }
+            100% { transform: scale(1) rotate(360deg); opacity: 1; }
+        }
+
+        .animate-dice {
+            animation: diceRoll 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes pulseCrit {
+            0%, 100% { box-shadow: 0 0 15px rgba(250, 204, 21, 0.7); border-color: #facc15; }
+            50% { box-shadow: 0 0 30px rgba(250, 204, 21, 1); border-color: #fef08a; }
+        }
+
+        .crit-success {
+            animation: pulseCrit 1s infinite;
+        }
+
+        @keyframes shakeFumble {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .crit-fail {
+            animation: shakeFumble 0.45s ease-in-out;
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+        }
+
+        .btn-press:active {
+            transform: scale(0.97);
+        }
+    </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden select-none">
+
+    <!-- Contenitore Principale Mobile-First (Centrato su desktop, full-screen su mobile) -->
+    <div id="app-container" class="w-full max-w-md h-full bg-parchment-900 flex flex-col relative shadow-2xl border-x border-gold-500/20 overflow-hidden">
+
+        <!-- ========================================================= -->
+        <!-- SCHERMATA 1: CREAZIONE DEL PERSONAGGIO                    -->
+        <!-- ========================================================= -->
+        <div id="screen-creation" class="flex-1 flex flex-col overflow-y-auto p-5 space-y-5">
+            <div class="text-center pt-2">
+                <p class="text-xs uppercase tracking-[0.25em] text-gold-500 font-semibold">Dungeons & Dragons 5e</p>
+                <h1 class="font-fantasy text-3xl font-extrabold text-parchment-100 gold-glow mt-1">Cronache di Oakhaven</h1>
+                <p class="text-xs text-parchment-200/70 mt-1">Forgia il tuo eroe ed entra nell'oscurità</p>
+            </div>
+
+            <!-- Pulsante Carica Salvataggio (Visibile solo se esiste un salvataggio) -->
+            <div id="resume-box" class="hidden bg-parchment-800 fantasy-border rounded-xl p-3 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gold-500 font-semibold">Avventura in corso trovata</p>
+                    <p id="resume-info" class="text-sm font-bold text-parchment-100">Eroe - Liv. 1</p>
+                </div>
+                <button onclick="resumeSavedGame()" class="bg-gold-600 hover:bg-gold-500 text-parchment-950 font-bold text-xs px-4 py-2.5 rounded-lg transition btn-press">
+                    Continua
+                </button>
+            </div>
+
+            <!-- Nome Eroe -->
+            <div class="space-y-1.5">
+                <label class="block font-fantasy text-sm text-gold-500 font-bold">1. Nome dell'Avventuriero</label>
+                <input type="text" id="char-name" placeholder="Es. Kaelen, Lyra, Thorin..." maxlength="20"
+                    class="w-full bg-parchment-950 border border-gold-500/40 rounded-xl px-4 py-3 text-parchment-100 placeholder-parchment-200/30 focus:outline-none focus:border-gold-500 text-base">
+            </div>
+
+            <!-- Scelta Razza -->
+            <div class="space-y-2">
+                <label class="block font-fantasy text-sm text-gold-500 font-bold">2. Scegli la Razza</label>
+                <div id="race-grid" class="grid grid-cols-2 gap-2.5">
+                    <!-- Popolato via JS -->
+                </div>
+            </div>
+
+            <!-- Scelta Classe -->
+            <div class="space-y-2">
+                <label class="block font-fantasy text-sm text-gold-500 font-bold">3. Scegli la Classe</label>
+                <div id="class-grid" class="grid grid-cols-2 gap-2.5">
+                    <!-- Popolato via JS -->
+                </div>
+            </div>
+
+            <!-- Anteprima Statistiche -->
+            <div class="bg-parchment-950/90 fantasy-border rounded-xl p-3.5 space-y-2.5">
+                <div class="flex justify-between items-center border-b border-gold-500/20 pb-1.5">
+                    <span class="font-fantasy text-xs text-gold-500 font-bold">Anteprima Eroe</span>
+                    <div class="flex space-x-3 text-xs font-bold">
+                        <span class="text-red-400">❤️ PF: <span id="prev-hp">12</span></span>
+                        <span class="text-sky-400">🛡️ CA: <span id="prev-ac">16</span></span>
+                    </div>
+                </div>
+                <div id="prev-stats" class="grid grid-cols-6 gap-1 text-center">
+                    <!-- Popolato via JS -->
+                </div>
+                <p id="prev-ability" class="text-xs text-parchment-200/80 italic pt-1">
+                    Abilità speciale: Colpo Poderoso
+                </p>
+            </div>
+
+            <!-- Bottone Avvio -->
+            <div class="pt-1 pb-4">
+                <button onclick="startNewAdventure()" class="w-full bg-gradient-to-r from-gold-600 via-gold-500 to-gold-600 text-parchment-950 font-fantasy font-extrabold text-base py-4 rounded-xl shadow-lg shadow-gold-500/20 transition btn-press flex items-center justify-center space-x-2">
+                    <span>⚔️ Inizia l'Avventura</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- SCHERMATA 2: INTERFACCIA PRINCIPALE DI GIOCO              -->
+        <!-- ========================================================= -->
+        <div id="screen-game" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+
+            <!-- HEADER COMPATTO -->
+            <header class="bg-parchment-950 border-b border-gold-500/30 px-3.5 py-2.5 flex items-center justify-between shrink-0 z-10">
+                <div class="flex items-center space-x-2.5 min-w-0">
+                    <!-- Icona Classe -->
+                    <div id="hud-icon" class="w-10 h-10 rounded-xl bg-parchment-800 border border-gold-500/40 flex items-center justify-center text-xl shrink-0">
+                        ⚔️
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center space-x-1.5">
+                            <h2 id="hud-name" class="font-fantasy font-bold text-sm text-parchment-100 truncate">Eroe</h2>
+                            <span id="hud-lvl" class="text-[10px] bg-gold-500/20 text-gold-400 px-1.5 py-0.5 rounded font-bold">Lv.1</span>
+                        </div>
+                        <!-- Barra PF -->
+                        <div class="flex items-center space-x-2 mt-1">
+                            <div class="w-24 h-2.5 bg-parchment-800 rounded-full overflow-hidden border border-red-900/60">
+                                <div id="hud-hp-bar" class="h-full bg-gradient-to-r from-blood-700 to-red-500 transition-all duration-300" style="width: 100%"></div>
+                            </div>
+                            <span id="hud-hp-text" class="text-[11px] font-bold text-red-400">12/12</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Rapide + Pulsante Scheda -->
+                <div class="flex items-center space-x-2 shrink-0">
+                    <div class="text-right text-[11px] leading-tight mr-1">
+                        <div class="text-sky-400 font-bold">🛡️ <span id="hud-ac">16</span></div>
+                        <div class="text-gold-400 font-bold">🪙 <span id="hud-gold">15</span></div>
+                    </div>
+                    <button onclick="openSheetModal()" class="relative bg-parchment-800 hover:bg-parchment-700 border border-gold-500/40 p-2.5 rounded-xl text-gold-400 transition btn-press" aria-label="Scheda Personaggio">
+                        <span class="text-lg">📜</span>
+                        <span id="levelup-badge" class="hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-gold-400 rounded-full animate-ping"></span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- BANNER COMBATTIMENTO (Visibile solo in scontro) -->
+            <div id="combat-banner" class="hidden bg-gradient-to-r from-blood-900/90 via-parchment-900 to-blood-900/90 border-b border-red-500/40 px-4 py-2.5 shrink-0">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <span id="enemy-icon" class="text-2xl">👺</span>
+                        <div>
+                            <div class="flex items-center space-x-1.5">
+                                <span id="enemy-name" class="font-fantasy font-bold text-sm text-red-200">Goblin Esploratore</span>
+                                <span id="enemy-ac" class="text-[10px] bg-black/50 text-sky-300 px-1.5 py-0.5 rounded border border-sky-500/30">CA 13</span>
+                                <span id="enemy-debuff" class="hidden text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.5 rounded border border-purple-400/40">🎭 Beffato</span>
+                            </div>
+                            <div class="w-40 h-2 bg-black/60 rounded-full overflow-hidden mt-1 border border-red-500/30">
+                                <div id="enemy-hp-bar" class="h-full bg-red-500 transition-all duration-300" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase tracking-wider text-red-300 block">PF Nemico</span>
+                        <span id="enemy-hp-text" class="font-bold text-sm text-white">9 / 9</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AREA NARRATIVA SCROLLABILE -->
+            <main id="narrative-log" class="flex-1 overflow-y-auto p-4 space-y-3.5 scroll-smooth">
+                <!-- I paragrafi narrativi e i risultati dei dadi vengono aggiunti qui -->
+            </main>
+
+            <!-- OVERLAY ANIMAZIONE DADO CENTRALE (Appare durante i tiri) -->
+            <div id="dice-overlay" class="hidden pointer-events-none absolute inset-0 flex items-center justify-center z-30 bg-black/40 backdrop-blur-[1px]">
+                <div id="dice-box" class="bg-parchment-900 border-2 border-gold-500 rounded-2xl p-5 flex flex-col items-center shadow-2xl min-w-[150px]">
+                    <span id="dice-label" class="text-[11px] uppercase tracking-widest text-gold-400 font-bold mb-1">Tiro d20</span>
+                    <div class="relative w-20 h-20 flex items-center justify-center">
+                        <!-- SVG Poliedro D20 -->
+                        <svg viewBox="0 0 100 100" class="w-full h-full text-parchment-800 fill-current stroke-gold-500" stroke-width="3">
+                            <polygon points="50,5 93,28 93,72 50,95 7,72 7,28" />
+                            <polygon points="50,5 80,50 50,95 20,50" fill="none" stroke-opacity="0.4" />
+                            <line x1="7" y1="28" x2="93" y2="28" stroke-opacity="0.4" />
+                            <line x1="7" y1="72" x2="93" y2="72" stroke-opacity="0.4" />
+                        </svg>
+                        <span id="dice-number" class="absolute font-fantasy font-extrabold text-3xl text-parchment-100">20</span>
+                    </div>
+                    <span id="dice-detail" class="text-xs font-semibold text-parchment-200 mt-1.5">15 + 3 = 18</span>
+                    <span id="dice-outcome" class="text-xs font-extrabold uppercase mt-1 text-emerald-400">Successo!</span>
+                </div>
+            </div>
+
+            <!-- FOOTER: MINI-ROLLER DADI + AZIONI CONTESTUALI -->
+            <footer class="bg-parchment-950 border-t border-gold-500/30 p-3 space-y-2.5 shrink-0 z-10">
+                <!-- Barra Mini-Roller Dadi Rapidi -->
+                <div class="flex items-center justify-between bg-parchment-900/90 rounded-xl px-2.5 py-1.5 border border-gold-500/20">
+                    <span class="text-[10px] uppercase tracking-wider text-gold-500 font-bold mr-1">Dadi:</span>
+                    <div class="flex space-x-1.5 overflow-x-auto">
+                        <button onclick="manualRoll(20)" class="px-2.5 py-1 bg-parchment-800 hover:bg-gold-600/30 text-gold-400 border border-gold-500/30 rounded-lg text-xs font-bold btn-press">d20</button>
+                        <button onclick="manualRoll(12)" class="px-2 py-1 bg-parchment-800 hover:bg-parchment-700 text-parchment-200 rounded-lg text-xs font-semibold btn-press">d12</button>
+                        <button onclick="manualRoll(10)" class="px-2 py-1 bg-parchment-800 hover:bg-parchment-700 text-parchment-200 rounded-lg text-xs font-semibold btn-press">d10</button>
+                        <button onclick="manualRoll(8)" class="px-2 py-1 bg-parchment-800 hover:bg-parchment-700 text-parchment-200 rounded-lg text-xs font-semibold btn-press">d8</button>
+                        <button onclick="manualRoll(6)" class="px-2 py-1 bg-parchment-800 hover:bg-parchment-700 text-parchment-200 rounded-lg text-xs font-semibold btn-press">d6</button>
+                        <button onclick="manualRoll(4)" class="px-2 py-1 bg-parchment-800 hover:bg-parchment-700 text-parchment-200 rounded-lg text-xs font-semibold btn-press">d4</button>
+                    </div>
+                </div>
+
+                <!-- Pulsanti Azione Grandi per il Pollice -->
+                <div id="action-buttons" class="grid grid-cols-1 gap-2 max-h-[34vh] overflow-y-auto">
+                    <!-- Popolato dinamicamente dal motore di gioco -->
+                </div>
+            </footer>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- MODALE: SCHEDA PERSONAGGIO & INVENTARIO                   -->
+        <!-- ========================================================= -->
+        <div id="modal-sheet" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="bg-parchment-900 border-t-2 sm:border-2 border-gold-500/50 w-full max-w-md max-h-[88dvh] rounded-t-3xl sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+                <!-- Header Modale -->
+                <div class="bg-parchment-950 px-5 py-3.5 border-b border-gold-500/30 flex justify-between items-center shrink-0">
+                    <div>
+                        <h3 id="sheet-title" class="font-fantasy font-bold text-lg text-gold-400">Scheda Eroe</h3>
+                        <p id="sheet-subtitle" class="text-xs text-parchment-200/70">Umano Guerriero • Livello 1</p>
+                    </div>
+                    <button onclick="closeSheetModal()" class="w-9 h-9 rounded-full bg-parchment-800 text-parchment-200 flex items-center justify-center font-bold text-lg btn-press">✕</button>
+                </div>
+
+                <!-- Contenuto Scrollabile Scheda -->
+                <div class="p-4 overflow-y-auto space-y-4">
+                    <!-- Barra Esperienza & Level Up -->
+                    <div class="bg-parchment-950 p-3 rounded-xl border border-gold-500/20">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-parchment-200/80 font-semibold">Punti Esperienza (PE)</span>
+                            <span id="sheet-xp-text" class="text-gold-400 font-bold">0 / 100 PE</span>
+                        </div>
+                        <div class="w-full h-2 bg-parchment-800 rounded-full overflow-hidden">
+                            <div id="sheet-xp-bar" class="h-full bg-gold-500 transition-all" style="width: 0%"></div>
+                        </div>
+                        <button id="btn-levelup" onclick="performLevelUp()" class="hidden mt-2.5 w-full bg-gradient-to-r from-gold-600 to-gold-400 text-parchment-950 font-fantasy font-extrabold text-xs py-2.5 rounded-lg shadow-md animate-bounce">
+                            ✨ Sali di Livello! (+PF e +1 Bonus)
+                        </button>
+                    </div>
+
+                    <!-- Griglia 6 Caratteristiche D&D -->
+                    <div>
+                        <h4 class="font-fantasy text-xs uppercase tracking-wider text-gold-500 font-bold mb-2">Caratteristiche & Modificatori</h4>
+                        <div id="sheet-stats-grid" class="grid grid-cols-3 gap-2">
+                            <!-- Popolato via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Equipaggiamento Attivo -->
+                    <div class="bg-parchment-800/60 p-3 rounded-xl border border-gold-500/20 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="text-parchment-200/60 block">Arma Equipaggiata</span>
+                            <span id="sheet-weapon" class="font-bold text-parchment-100 text-sm">Spada Lunga (1d8)</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-parchment-200/60 block">Abilità / Magia</span>
+                            <span id="sheet-skill" class="font-bold text-gold-400 text-sm">Colpo Poderoso</span>
+                        </div>
+                    </div>
+
+                    <!-- Inventario Interattivo -->
+                    <div>
+                        <h4 class="font-fantasy text-xs uppercase tracking-wider text-gold-500 font-bold mb-2">Zaino & Oggetti</h4>
+                        <div id="sheet-inventory" class="space-y-2">
+                            <!-- Popolato via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Opzione Nuova Partita (con conferma inline, senza alert/confirm) -->
+                    <div class="pt-3 border-t border-gold-500/20">
+                        <div id="reset-confirm-box" class="hidden bg-blood-900/50 border border-red-500/40 rounded-xl p-3 mb-2 text-center space-y-2">
+                            <p class="text-xs text-red-200">Cancellare i progressi attuali e creare un nuovo eroe?</p>
+                            <div class="flex space-x-2">
+                                <button onclick="confirmResetGame()" class="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg">Sì, Ricomincia</button>
+                                <button onclick="toggleResetConfirm(false)" class="flex-1 bg-parchment-800 text-parchment-200 text-xs font-bold py-2 rounded-lg">Annulla</button>
+                            </div>
+                        </div>
+                        <button id="btn-show-reset" onclick="toggleResetConfirm(true)" class="w-full py-2.5 text-xs font-semibold text-red-400 hover:text-red-300 border border-red-900/50 rounded-xl">
+                            🔄 Abbandona e Nuova Partita
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. DATI DI BASE D&D 5e (RAZZE, CLASSI, MOSTRI, SCENARI)
+           ========================================================================= */
+        const RACES = [
+            { id: 'umano', name: 'Umano', icon: '🧑', bonusDesc: '+1 a tutte le stat.', bonuses: { for: 1, des: 1, cos: 1, int: 1, sag: 1, car: 1 } },
+            { id: 'elfo', name: 'Elfo', icon: '🧝', bonusDesc: '+2 DES, +1 INT', bonuses: { for: 0, des: 2, cos: 0, int: 1, sag: 0, car: 0 } },
+            { id: 'nano', name: 'Nano', icon: '🧔', bonusDesc: '+2 COS, +1 FOR', bonuses: { for: 1, des: 0, cos: 2, int: 0, sag: 0, car: 0 } },
+            { id: 'tiefling', name: 'Tiefling', icon: '😈', bonusDesc: '+2 CAR, +1 INT', bonuses: { for: 0, des: 0, cos: 0, int: 1, sag: 0, car: 2 } }
+        ];
+
+        const CLASSES = [
+            {
+                id: 'guerriero', name: 'Guerriero', icon: '⚔️',
+                baseStats: { for: 15, des: 12, cos: 14, int: 8, sag: 10, car: 10 },
+                hpBase: 12, acBase: 16, mainStat: 'for',
+                weaponName: 'Spada Lunga', weaponDie: 8,
+                abilityName: 'Colpo Poderoso', abilityDesc: 'Attacco devastante (+2 colpire, 2d8 danni)',
+                abilityType: 'attack', abilityDie: 8, abilityDiceCount: 2, abilityBonusHit: 2,
+                startItems: [
+                    { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 2, type: 'heal' },
+                    { id: 'torch', name: 'Torcia Eterna', icon: '🔥', desc: 'Illumina le tenebre più fitte', qty: 1, type: 'key' }
+                ]
+            },
+            {
+                id: 'mago', name: 'Mago', icon: '🔮',
+                baseStats: { for: 8, des: 14, cos: 12, int: 16, sag: 12, car: 10 },
+                hpBase: 8, acBase: 13, mainStat: 'int',
+                weaponName: 'Bastone Arcano', weaponDie: 6,
+                abilityName: 'Dardo Incantato / Fuoco', abilityDesc: 'Dardo arcano infallibile (3d4+3 danni)',
+                abilityType: 'auto_damage', abilityDie: 4, abilityDiceCount: 3, abilityFlatBonus: 3,
+                startItems: [
+                    { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 2, type: 'heal' },
+                    { id: 'scroll_shield', name: 'Pergamena Arcana', icon: '📜', desc: 'Antiche rune di Oakhaven', qty: 1, type: 'key' }
+                ]
+            },
+            {
+                id: 'ladro', name: 'Ladro', icon: '🗡️',
+                baseStats: { for: 10, des: 16, cos: 12, int: 12, sag: 10, car: 12 },
+                hpBase: 10, acBase: 14, mainStat: 'des',
+                weaponName: 'Pugnale Gemello', weaponDie: 6,
+                abilityName: 'Attacco Furtivo', abilityDesc: 'Colpo letale nei punti vitali (1d6 + 2d6)',
+                abilityType: 'attack', abilityDie: 6, abilityDiceCount: 3, abilityBonusHit: 3,
+                startItems: [
+                    { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 2, type: 'heal' },
+                    { id: 'lockpicks', name: 'Arnesi da Scasso', icon: '🗝️', desc: '+2 alle prove per scassinare', qty: 1, type: 'key' }
+                ]
+            },
+            {
+                id: 'chierico', name: 'Chierico', icon: '🛡️',
+                baseStats: { for: 12, des: 10, cos: 14, int: 10, sag: 16, car: 10 },
+                hpBase: 11, acBase: 15, mainStat: 'sag',
+                weaponName: 'Mazza Sacra', weaponDie: 6,
+                abilityName: 'Cura Ferite / Luce Sacra', abilityDesc: 'Cura 1d8+SAG PF e colpisce con luce divina',
+                abilityType: 'heal_and_smite', abilityDie: 8,
+                startItems: [
+                    { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 2, type: 'heal' },
+                    { id: 'holy_symbol', name: 'Simbolo Sacro', icon: '☀️', desc: 'Respinge i non-morti', qty: 1, type: 'key' }
+                ]
+            },
+            {
+                id: 'bardo', name: 'Bardo', icon: '🎭',
+                baseStats: { for: 8, des: 14, cos: 12, int: 12, sag: 10, car: 16 },
+                hpBase: 10, acBase: 14, mainStat: 'car', weaponStat: 'des',
+                weaponName: 'Stocco', weaponDie: 8,
+                abilityName: 'Beffa Crudele', abilityDesc: '1d6+CAR danni psichici e -3 all\'attacco nemico',
+                abilityType: 'vicious_mockery', abilityDie: 6,
+                secondaryAbilityName: 'Ispirazione / Parola Guaritrice',
+                startItems: [
+                    { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 2, type: 'heal' },
+                    { id: 'lute', name: 'Liuto Intarsiato', icon: '🪕', desc: 'Strumento musicale incantato (+2 Intrattenimento)', qty: 1, type: 'key' },
+                    { id: 'leather_armor', name: 'Armatura di Cuoio', icon: '🦺', desc: 'Protezione leggera e agile (CA 14)', qty: 1, type: 'key' }
+                ]
+            }
+        ];
+
+        const MONSTERS = {
+            goblin: {
+                id: 'goblin', name: 'Goblin Predone', icon: '👺',
+                maxHp: 11, ac: 13, attackBonus: 3, damageDie: 6, damageBonus: 1,
+                xpReward: 50, goldReward: 12,
+                desc: 'Una creatura dalla pelle verdastra arrugginita che stringe una scimitarra scheggiata.'
+            },
+            skeleton: {
+                id: 'skeleton', name: 'Guardiano Scheletrico', icon: '💀',
+                maxHp: 15, ac: 14, attackBonus: 4, damageDie: 8, damageBonus: 2,
+                xpReward: 75, goldReward: 20,
+                desc: 'Ossa antiche tenute insieme da negromanzia, con orbite accese di fuoco violaceo.'
+            },
+            direwolf: {
+                id: 'direwolf', name: 'Lupo delle Ombre', icon: '🐺',
+                maxHp: 18, ac: 13, attackBonus: 4, damageDie: 8, damageBonus: 2,
+                xpReward: 85, goldReward: 15,
+                desc: 'Una bestia immensa dal manto nero come la pece e zanne grondanti bava.'
+            },
+            necromancer: {
+                id: 'necromancer', name: 'Malakor il Negromante', icon: '🧙‍♂️',
+                maxHp: 28, ac: 15, attackBonus: 5, damageDie: 10, damageBonus: 3,
+                xpReward: 150, goldReward: 65, isBoss: true,
+                desc: 'Il signore oscuro delle Cripte di Oakhaven, avvolto in vesti lacere e potere necrotico!'
+            }
+        };
+
+        /* =========================================================================
+           2. GRAFO NARRATIVO INTERATTIVO (LE CRIPTE DI OAKHAVEN)
+           ========================================================================= */
+        const STORY_NODES = {
+            start: {
+                title: "La Taverna del Drago D'Oro",
+                text: "La pioggia batte incessante sui vetri piombati della Taverna del Drago D'Oro, nel villaggio di Oakhaven. Il borgomastro ti ha convocato d'urgenza: da tre notti, lamenti spettrali e non-morti emergono dall'antica Cripta Sussurrante sulla collina. Davanti a te, l'oste pulisce un boccale mentre un mercenario incappucciato ti osserva dall'angolo.",
+                choices: [
+                    { label: "Intona una ballata eroica al liuto per conquistare la sala", reqClass: "bardo", skill: "car", dc: 9, skillName: "Intrattenimento", nextSuccess: "tavern_bard_ok", nextFail: "tavern_info_fail" },
+                    { label: "Chiedi informazioni all'oste", skill: "car", dc: 10, skillName: "Persuasione", nextSuccess: "tavern_info_ok", nextFail: "tavern_info_fail" },
+                    { label: "Osserva il mercenario incappucciato", skill: "sag", dc: 11, skillName: "Percezione", nextSuccess: "tavern_scout_ok", nextFail: "tavern_info_fail" },
+                    { label: "Incaminati subito verso le Cripte", next: "crypt_entrance" }
+                ]
+            },
+            tavern_bard_ok: {
+                text: "Le tue dita danzano sulle corde del liuto! La taverna esplode in applausi: l'oste ti offre una borsa con 15 monete d'oro, una Pozione di Cura e ti svela un passaggio segreto: «Suona un accordo armonico davanti alle statue nell'atrio, bardo: la pietra riconosce la musica antica!»",
+                reward: { gold: 15, xp: 25, item: { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 1, type: 'heal' } },
+                choices: [
+                    { label: "Parti verso le Cripte di Oakhaven", next: "crypt_entrance" }
+                ]
+            },
+            tavern_info_ok: {
+                text: "L'oste si china sul bancone e ti affida una piccola chiave d'argento e qualche moneta d'oro: «Attento alle trappole nell'atrio, avventuriero. Malakor il Negromante si nasconde oltre la sala delle statue.» Hai ottenuto +10 Oro e la Chiave d'Argento!",
+                reward: { gold: 10, item: { id: 'silver_key', name: "Chiave d'Argento", icon: '🔑', desc: 'Apre il cancello interno delle cripte', qty: 1, type: 'key' } },
+                choices: [
+                    { label: "Parti verso le Cripte di Oakhaven", next: "crypt_entrance" }
+                ]
+            },
+            tavern_info_fail: {
+                text: "L'oste sputa per terra e scuote il capo: «Nessuno torna vivo da lassù, straniero. Non ho nulla da dirti se non di tenerti strette le tue armi.» Non c'è tempo da perdere.",
+                choices: [
+                    { label: "Esci nella tempesta verso le Cripte", next: "crypt_entrance" }
+                ]
+            },
+            tavern_scout_ok: {
+                text: "Noti che il mercenario è in realtà un esploratore ferito. Prima di svenire, ti mormora: «I goblin sorvegliano l'ingresso... ma temono il fuoco e la luce.» Ti lascia una Pozione di Cura!",
+                reward: { item: { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 1, type: 'heal' } },
+                choices: [
+                    { label: "Raggiungi l'ingresso delle Cripte", next: "crypt_entrance" }
+                ]
+            },
+            crypt_entrance: {
+                title: "L'Ingresso delle Cripte",
+                text: "Giungi davanti a un arco di pietra divorato dall'edera. Due bracieri spenti fiancheggiano la discesa nell'oscurità. Dalle ombre dietro una colonna emerge un Goblin Predone che annusa l'aria, pronto a dare l'allarme!",
+                choices: [
+                    { label: "Inganna il Goblin fingendoti il nuovo emissario oscuro", reqClass: "bardo", skill: "car", dc: 10, skillName: "Inganno", nextSuccess: "goblin_bard_trick", nextFail: "combat_goblin" },
+                    { label: "Sgattaiola alle sue spalle", skill: "des", dc: 12, skillName: "Furtività", nextSuccess: "goblin_ambush", nextFail: "combat_goblin" },
+                    { label: "Carica il Goblin a spada tratta!", combat: "goblin", nextWin: "crypt_hall" },
+                    { label: "Intimidiscilo ruggendo", skill: "for", dc: 13, skillName: "Intimidire", nextSuccess: "goblin_flee", nextFail: "combat_goblin" }
+                ]
+            },
+            goblin_bard_trick: {
+                text: "Con tono teatrale e sguardo severo rimproveri il Goblin per il ritardo nella guardia! Confuso e intimorito dalla tua autorità, la creatura ti consegna persino il suo gruzzolo (+14 Oro, +30 PE) e scappa a lucidare le armi altrove.",
+                reward: { xp: 30, gold: 14 },
+                choices: [
+                    { label: "Scendi trionfante nell'Atrio delle Statue", next: "crypt_hall" }
+                ]
+            },
+            goblin_ambush: {
+                text: "Ti muovi come un'ombra silenziosa! Colpisci il Goblin di sorpresa prima ancora che possa estrarre l'arma, mettendolo fuori combattimento in un istante e recuperando il suo bottino (+15 PE, +8 Oro).",
+                reward: { xp: 25, gold: 8 },
+                choices: [
+                    { label: "Scendi nell'Atrio delle Statue", next: "crypt_hall" }
+                ]
+            },
+            goblin_flee: {
+                text: "Il tuo grido rimbomba nelle volte di pietra! Terrorizzato, il Goblin getta la scimitarra e fugge nella foresta lasciando cadere un sacchetto con 10 monete d'oro.",
+                reward: { xp: 20, gold: 10 },
+                choices: [
+                    { label: "Prosegui nell'Atrio delle Statue", next: "crypt_hall" }
+                ]
+            },
+            combat_goblin: {
+                text: "Il Goblin stride con voce acuta e ti balza addosso con la scimitarra sguainata!",
+                autoCombat: "goblin",
+                nextWin: "crypt_hall"
+            },
+            crypt_hall: {
+                title: "L'Atrio delle Statue Antiche",
+                text: "L'atrio è sostenuto da quattro colossi di pietra corroso. Al centro si trova un altare profanato con incisioni arcane, mentre a nord un pesante cancello di ferro sbarra il passaggio verso il Sanctum. Un Guardiano Scheletrico pattuglia l'altare.",
+                choices: [
+                    { label: "Suona una melodia di requiem per placare lo scheletro", reqClass: "bardo", skill: "car", dc: 11, skillName: "Intrattenimento", nextSuccess: "altar_blessing", nextFail: "combat_skeleton" },
+                    { label: "Decifra le rune sull'altare", skill: "int", dc: 12, skillName: "Arcano", nextSuccess: "altar_blessing", nextFail: "combat_skeleton" },
+                    { label: "Affronta il Guardiano Scheletrico", combat: "skeleton", nextWin: "sanctum_gate" },
+                    { label: "Forza il cancello di ferro", skill: "for", dc: 14, skillName: "Atletica", nextSuccess: "sanctum_gate", nextFail: "combat_skeleton" }
+                ]
+            },
+            altar_blessing: {
+                text: "Pronunci le parole antiche incise sull'altare! Una luce dorata avvolge la sala: il Guardiano Scheletrico si sgretola in polvere e una benedizione arcana ti rigenera 6 PF!",
+                reward: { heal: 6, xp: 40 },
+                choices: [
+                    { label: "Varca il cancello verso il Sanctum", next: "sanctum_gate" }
+                ]
+            },
+            combat_skeleton: {
+                text: "Le orbite dello scheletro divampano di luce viola: solleva la sua lama arrugginita contro di te!",
+                autoCombat: "skeleton",
+                nextWin: "sanctum_gate"
+            },
+            sanctum_gate: {
+                title: "Le Soglie del Sanctum",
+                text: "Oltre il cancello, l'aria diventa gelida. Un Lupo delle Ombre ringhia nell'oscurità accanto a un forziere socchiuso. Puoi riposare brevemente al riparo di una nicchia prima dello scontro finale.",
+                choices: [
+                    { label: "Riposa brevemente (+5 PF) e ispeziona", rewardOnce: { heal: 5 }, next: "wolf_encounter" },
+                    { label: "Scassina/Apri il forziere silenziosamente", skill: "des", dc: 12, skillName: "Rapidità di Mano", nextSuccess: "chest_loot", nextFail: "wolf_encounter" }
+                ]
+            },
+            chest_loot: {
+                text: "Con abilità apri il forziere senza svegliare la bestia! Trovi una Pozione di Cura e 25 monete d'oro.",
+                reward: { gold: 25, item: { id: 'potion_heal', name: 'Pozione di Cura', icon: '🧪', desc: 'Ripristina 2d4+2 PF', qty: 1, type: 'heal' } },
+                choices: [
+                    { label: "Avanza verso la Camera del Negromante", next: "boss_room" }
+                ]
+            },
+            wolf_encounter: {
+                text: "Il Lupo delle Ombre fiuta la tua presenza e balza fuori dall'oscurità con le fauci spalancate!",
+                autoCombat: "direwolf",
+                nextWin: "boss_room"
+            },
+            boss_room: {
+                title: "Il Sanctum di Malakor",
+                text: "Sei giunto nel cuore della cripta. Sopra un podio d'ossidiana, Malakor il Negromante sta completando un rituale di sangue per risvegliare un'armata di non-morti. Si volta verso di te con un sorriso gelido: «Sarai il primo capitano della mia legione!»",
+                choices: [
+                    { label: "Spezza la sua concentrazione con una satira mordace", reqClass: "bardo", skill: "car", dc: 12, skillName: "Persuasione/Beffa", nextSuccess: "boss_weakened", nextFail: "combat_boss_direct" },
+                    { label: "Interrompi il rituale con un assalto!", combat: "necromancer", nextWin: "victory" },
+                    { label: "Usa un contro-incantesimo / preghiera", skill: "sag", dc: 14, skillName: "Religione/Arcano", nextSuccess: "boss_weakened", nextFail: "combat_boss_direct" }
+                ]
+            },
+            boss_weakened: {
+                text: "La tua invocazione spezza il cristallo del rituale! Malakor urla di dolore subendo il contraccolpo magico prima ancora di iniziare lo scontro!",
+                choices: [
+                    { label: "Finisci Malakor in combattimento!", combat: "necromancer", weakenBoss: true, nextWin: "victory" }
+                ]
+            },
+            combat_boss_direct: {
+                text: "Malakor scaglia un dardo d'ombra e ti affronta in duello mortale!",
+                autoCombat: "necromancer",
+                nextWin: "victory"
+            },
+            victory: {
+                title: "Gloria ad Oakhaven!",
+                text: "Con un ultimo colpo decisivo, Malakor crolla a terra e la nebbia oscura delle cripte si dissolve in raggi di luce lunare. Oakhaven è salva! Il tuo nome verrà cantato dai bardi nelle taverne di tutto il reame.",
+                isEnding: true,
+                choices: [
+                    { label: "Esplora ancora le cripte (Modalità Infinita)", next: "endless_patrol" }
+                ]
+            },
+            endless_patrol: {
+                title: "Pattuglia nelle Profondità",
+                text: "Le cripte sono state purificate, ma qualche creatura errante si aggira ancora nei cunicoli inferiori in cerca di tesori.",
+                choices: [
+                    { label: "Cerca un nemico da affrontare", combat: "skeleton", nextWin: "endless_patrol" },
+                    { label: "Riposa al campo base (+8 PF)", rewardOnce: { heal: 8 }, next: "endless_patrol" }
+                ]
+            }
+        };
+
+        /* =========================================================================
+           3. STATO DEL GIOCO & GESTIONE AUDIO PROCEDURALE (TONE.JS)
+           ========================================================================= */
+        let selectedRaceId = 'umano';
+        let selectedClassId = 'guerriero';
+
+        let gameState = null;
+
+        // Effetti sonori leggeri con Tone.js
+        function playSound(type) {
+            try {
+                if (typeof Tone === 'undefined') return;
+                if (Tone.context.state !== 'running') Tone.start();
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -10;
+
+                if (type === 'dice') {
+                    synth.triggerAttackRelease(["C4", "E4", "G4"], "32n");
+                } else if (type === 'crit') {
+                    synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "8n");
+                } else if (type === 'fail') {
+                    synth.triggerAttackRelease(["C3", "B2"], "8n");
+                } else if (type === 'hit') {
+                    const noise = new Tone.NoiseSynth({ envelope: { attack: 0.01, decay: 0.12, sustain: 0 } }).toDestination();
+                    noise.volume.value = -8;
+                    noise.triggerAttackRelease("16n");
+                } else if (type === 'heal') {
+                    synth.triggerAttackRelease(["F4", "A4", "C5"], "8n");
+                }
+            } catch (e) {
+                // Ignora errori audio se bloccati dal browser
+            }
+        }
+
+        /* =========================================================================
+           4. FUNZIONI MATEMATICHE D&D 5e (DADI & MODIFICATORI)
+           ========================================================================= */
+        function getMod(score) {
+            return Math.floor((score - 10) / 2);
+        }
+
+        function formatMod(mod) {
+            return mod >= 0 ? `+${mod}` : `${mod}`;
+        }
+
+        function rollDie(sides) {
+            return Math.floor(Math.random() * sides) + 1;
+        }
+
+        function rollDiceMultiple(count, sides) {
+            let total = 0;
+            for (let i = 0; i < count; i++) total += rollDie(sides);
+            return total;
+        }
+
+        /* =========================================================================
+           5. INIZIALIZZAZIONE SCHERMATA CREAZIONE PERSONAGGIO
+           ========================================================================= */
+        function initCreationScreen() {
+            const raceGrid = document.getElementById('race-grid');
+            const classGrid = document.getElementById('class-grid');
+
+            raceGrid.innerHTML = RACES.map(r => `
+                <button type="button" onclick="selectRace('${r.id}')" id="race-btn-${r.id}"
+                    class="p-3 rounded-xl border text-left transition btn-press ${r.id === selectedRaceId ? 'bg-gold-500/20 border-gold-500 text-parchment-100' : 'bg-parchment-950/80 border-gold-500/20 text-parchment-200/80'}">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">${r.icon}</span>
+                        <span class="font-fantasy font-bold text-sm">${r.name}</span>
+                    </div>
+                    <p class="text-[11px] text-gold-400 mt-1">${r.bonusDesc}</p>
+                </button>
+            `).join('');
+
+            classGrid.innerHTML = CLASSES.map(c => `
+                <button type="button" onclick="selectClass('${c.id}')" id="class-btn-${c.id}"
+                    class="p-3 rounded-xl border text-left transition btn-press ${c.id === selectedClassId ? 'bg-gold-500/20 border-gold-500 text-parchment-100' : 'bg-parchment-950/80 border-gold-500/20 text-parchment-200/80'}">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">${c.icon}</span>
+                        <span class="font-fantasy font-bold text-sm">${c.name}</span>
+                    </div>
+                    <p class="text-[11px] text-parchment-200/70 mt-1">PF ${c.hpBase} • CA ${c.acBase}</p>
+                </button>
+            `).join('');
+
+            updateCreationPreview();
+            checkSavedGame();
+        }
+
+        function selectRace(id) {
+            selectedRaceId = id;
+            initCreationScreen();
+        }
+
+        function selectClass(id) {
+            selectedClassId = id;
+            initCreationScreen();
+        }
+
+        function updateCreationPreview() {
+            const race = RACES.find(r => r.id === selectedRaceId);
+            const cls = CLASSES.find(c => c.id === selectedClassId);
+
+            const stats = {};
+            ['for', 'des', 'cos', 'int', 'sag', 'car'].forEach(k => {
+                stats[k] = cls.baseStats[k] + race.bonuses[k];
+            });
+
+            const cosMod = getMod(stats.cos);
+            const maxHp = cls.hpBase + cosMod;
+            const ac = cls.acBase + ((cls.id === 'ladro' || cls.id === 'mago' || cls.id === 'bardo') ? Math.max(0, getMod(stats.des) - 2) : 0);
+
+            document.getElementById('prev-hp').textContent = maxHp;
+            document.getElementById('prev-ac').textContent = ac;
+            document.getElementById('prev-ability').textContent = cls.secondaryAbilityName
+                ? `Abilità: ${cls.abilityName} & ${cls.secondaryAbilityName}`
+                : `Abilità: ${cls.abilityName} — ${cls.abilityDesc}`;
+
+            const labels = { for: 'FOR', des: 'DES', cos: 'COS', int: 'INT', sag: 'SAG', car: 'CAR' };
+            document.getElementById('prev-stats').innerHTML = Object.keys(labels).map(k => `
+                <div class="bg-parchment-900 rounded-lg py-1.5 border border-gold-500/15">
+                    <span class="block text-[9px] text-parchment-200/60 font-bold">${labels[k]}</span>
+                    <span class="block font-bold text-xs text-parchment-100">${stats[k]}</span>
+                    <span class="block text-[10px] text-gold-400 font-semibold">${formatMod(getMod(stats[k]))}</span>
+                </div>
+            `).join('');
+        }
+
+        /* =========================================================================
+           6. GESTIONE SALVATAGGIO LOCALSTORAGE
+           ========================================================================= */
+        const SAVE_KEY = 'dnd_oakhaven_save_v1';
+
+        function saveGame() {
+            if (!gameState) return;
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+            } catch (e) {
+                console.warn('Impossibile salvare su localStorage', e);
+            }
+        }
+
+        function checkSavedGame() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    if (saved && saved.hero) {
+                        document.getElementById('resume-box').classList.remove('hidden');
+                        document.getElementById('resume-info').textContent = `${saved.hero.name} (${saved.hero.className} Lv.${saved.hero.level})`;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function resumeSavedGame() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return;
+                gameState = JSON.parse(raw);
+                switchToGameScreen();
+                renderAll();
+                addLogMessage("Bentornato nell'avventura! La tua cronaca è stata ripristinata.", "system");
+            } catch (e) {
+                startNewAdventure();
+            }
+        }
+
+        function startNewAdventure() {
+            const nameInput = document.getElementById('char-name').value.trim();
+            const heroName = nameInput || 'Kaelen';
+            const race = RACES.find(r => r.id === selectedRaceId);
+            const cls = CLASSES.find(c => c.id === selectedClassId);
+
+            const stats = {};
+            ['for', 'des', 'cos', 'int', 'sag', 'car'].forEach(k => {
+                stats[k] = cls.baseStats[k] + race.bonuses[k];
+            });
+
+            const cosMod = getMod(stats.cos);
+            const maxHp = cls.hpBase + cosMod;
+            const ac = cls.acBase + ((cls.id === 'ladro' || cls.id === 'mago' || cls.id === 'bardo') ? Math.max(0, getMod(stats.des) - 2) : 0);
+
+            gameState = {
+                hero: {
+                    name: heroName,
+                    raceName: race.name,
+                    classId: cls.id,
+                    className: cls.name,
+                    icon: cls.icon,
+                    level: 1,
+                    xp: 0,
+                    xpNext: 100,
+                    hp: maxHp,
+                    maxHp: maxHp,
+                    ac: ac,
+                    gold: 15,
+                    profBonus: 2,
+                    mainStat: cls.mainStat,
+                    weaponStat: cls.weaponStat || cls.mainStat,
+                    stats: stats,
+                    weaponName: cls.weaponName,
+                    weaponDie: cls.weaponDie,
+                    abilityName: cls.abilityName,
+                    abilityDesc: cls.abilityDesc,
+                    abilityType: cls.abilityType,
+                    abilityDie: cls.abilityDie,
+                    abilityDiceCount: cls.abilityDiceCount || 1,
+                    abilityBonusHit: cls.abilityBonusHit || 0,
+                    abilityFlatBonus: cls.abilityFlatBonus || 0,
+                    secondaryAbilityName: cls.secondaryAbilityName || null,
+                    bardicInspirationBonus: 0,
+                    inventory: JSON.parse(JSON.stringify(cls.startItems)),
+                    isDefending: false
+                },
+                currentNodeId: 'start',
+                visitedRewards: {},
+                combat: null // { enemyId, name, icon, hp, maxHp, ac, attackBonus, damageDie, damageBonus, xpReward, goldReward, debuffTurns, nextWin }
+            };
+
+            saveGame();
+            switchToGameScreen();
+            document.getElementById('narrative-log').innerHTML = '';
+            enterNode('start');
+        }
+
+        function switchToGameScreen() {
+            document.getElementById('screen-creation').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+        }
+
+        /* =========================================================================
+           7. ANIMAZIONE VISIVA TIRO DEL DADO (OVERLAY)
+           ========================================================================= */
+        let diceTimeout = null;
+
+        function showDiceAnimation({ dieSides = 20, rawRoll, modifier = 0, total, label = 'Tiro d20', outcomeText = '', isSuccess = null }) {
+            playSound(rawRoll === 20 && dieSides === 20 ? 'crit' : (rawRoll === 1 && dieSides === 20 ? 'fail' : 'dice'));
+
+            const overlay = document.getElementById('dice-overlay');
+            const box = document.getElementById('dice-box');
+            const numEl = document.getElementById('dice-number');
+            const labelEl = document.getElementById('dice-label');
+            const detailEl = document.getElementById('dice-detail');
+            const outcomeEl = document.getElementById('dice-outcome');
+
+            box.classList.remove('animate-dice', 'crit-success', 'crit-fail');
+            void box.offsetWidth; // trigger reflow
+            box.classList.add('animate-dice');
+
+            labelEl.textContent = label;
+            numEl.textContent = rawRoll;
+
+            if (modifier !== 0) {
+                detailEl.textContent = `Dado (${rawRoll}) ${formatMod(modifier)} = ${total}`;
+            } else {
+                detailEl.textContent = `Risultato: ${total}`;
+            }
+
+            if (dieSides === 20 && rawRoll === 20) {
+                box.classList.add('crit-success');
+                outcomeEl.textContent = outcomeText || 'CRITICO NATURALE! (20)';
+                outcomeEl.className = 'text-xs font-extrabold uppercase mt-1 text-gold-400';
+            } else if (dieSides === 20 && rawRoll === 1) {
+                box.classList.add('crit-fail');
+                outcomeEl.textContent = outcomeText || 'FALLIMENTO CRITICO! (1)';
+                outcomeEl.className = 'text-xs font-extrabold uppercase mt-1 text-red-500';
+            } else {
+                outcomeEl.textContent = outcomeText;
+                outcomeEl.className = `text-xs font-extrabold uppercase mt-1 ${isSuccess === true ? 'text-emerald-400' : (isSuccess === false ? 'text-red-400' : 'text-gold-400')}`;
+            }
+
+            overlay.classList.remove('hidden');
+
+            if (diceTimeout) clearTimeout(diceTimeout);
+            diceTimeout = setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 1350);
+        }
+
+        function manualRoll(sides) {
+            const roll = rollDie(sides);
+            showDiceAnimation({
+                dieSides: sides,
+                rawRoll: roll,
+                total: roll,
+                label: `Tiro Libero d${sides}`,
+                outcomeText: sides === 20 && roll === 20 ? '20 NATURALE!' : (sides === 20 && roll === 1 ? '1 NATURALE!' : '')
+            });
+            addLogMessage(`🎲 Tiro rapido d${sides}: <strong>${roll}</strong>`, 'dice');
+        }
+
+        /* =========================================================================
+           8. MOTORE NARRATIVO & PROVE DI ABILITÀ
+           ========================================================================= */
+        function addLogMessage(htmlText, type = 'story', title = null) {
+            const log = document.getElementById('narrative-log');
+            const div = document.createElement('div');
+
+            if (type === 'story') {
+                div.className = 'bg-parchment-800/65 fantasy-border rounded-2xl p-4 space-y-1.5 text-parchment-100 text-[15px] leading-relaxed';
+                div.innerHTML = `${title ? `<h3 class="font-fantasy font-bold text-base text-gold-400 border-b border-gold-500/20 pb-1 mb-1.5">${title}</h3>` : ''}<p>${htmlText}</p>`;
+            } else if (type === 'dice') {
+                div.className = 'bg-parchment-950/90 border border-gold-500/30 rounded-xl px-3.5 py-2 text-xs text-parchment-200 flex items-center justify-between';
+                div.innerHTML = `<span>${htmlText}</span>`;
+            } else if (type === 'combat') {
+                div.className = 'bg-blood-900/35 border border-red-500/30 rounded-xl px-3.5 py-2.5 text-sm text-parchment-100';
+                div.innerHTML = htmlText;
+            } else {
+                div.className = 'text-center text-xs text-gold-400/90 italic py-1';
+                div.innerHTML = htmlText;
+            }
+
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function enterNode(nodeId) {
+            const node = STORY_NODES[nodeId];
+            if (!node) return;
+
+            gameState.currentNodeId = nodeId;
+            gameState.combat = null;
+
+            // Applica eventuali ricompense automatiche del nodo
+            if (node.reward && !gameState.visitedRewards[nodeId]) {
+                gameState.visitedRewards[nodeId] = true;
+                applyReward(node.reward);
+            }
+
+            addLogMessage(node.text, 'story', node.title || null);
+
+            if (node.autoCombat) {
+                startCombat(node.autoCombat, node.nextWin, false);
+            } else {
+                renderAll();
+                saveGame();
+            }
+        }
+
+        function applyReward(reward) {
+            const h = gameState.hero;
+            if (reward.gold) {
+                h.gold += reward.gold;
+                addLogMessage(`🪙 Hai ottenuto <strong>+${reward.gold} Oro</strong>!`, 'system');
+            }
+            if (reward.xp) {
+                gainXP(reward.xp);
+            }
+            if (reward.heal) {
+                const healed = Math.min(h.maxHp - h.hp, reward.heal);
+                h.hp += healed;
+                playSound('heal');
+                addLogMessage(`💚 Recuperi <strong>${healed} Punti Ferita</strong>!`, 'system');
+            }
+            if (reward.item) {
+                addItemToInventory(reward.item);
+                addLogMessage(`🎒 Oggetto ottenuto: <strong>${reward.item.icon} ${reward.item.name}</strong>`, 'system');
+            }
+        }
+
+        function addItemToInventory(newItem) {
+            const existing = gameState.hero.inventory.find(i => i.id === newItem.id);
+            if (existing) {
+                existing.qty += (newItem.qty || 1);
+            } else {
+                gameState.hero.inventory.push({ ...newItem, qty: newItem.qty || 1 });
+            }
+        }
+
+        function gainXP(amount) {
+            const h = gameState.hero;
+            h.xp += amount;
+            addLogMessage(`✨ Guadagni <strong>+${amount} PE</strong>!`, 'system');
+            if (h.xp >= h.xpNext) {
+                document.getElementById('levelup-badge').classList.remove('hidden');
+                addLogMessage(`🌟 <strong>Hai abbastanza PE per salire di livello!</strong> Apri la Scheda Eroe (📜) in alto a destra.`, 'system');
+            }
+        }
+
+        function handleChoice(choiceIdx) {
+            const node = STORY_NODES[gameState.currentNodeId];
+            const choice = node.choices[choiceIdx];
+            if (!choice) return;
+
+            // Ricompensa singola su scelta (es. riposo breve)
+            if (choice.rewardOnce) {
+                const key = `${gameState.currentNodeId}_${choiceIdx}`;
+                if (!gameState.visitedRewards[key]) {
+                    gameState.visitedRewards[key] = true;
+                    applyReward(choice.rewardOnce);
+                } else {
+                    addLogMessage("Hai già riposato in questo luogo.", "system");
+                }
+            }
+
+            // Se richiede prova di abilità D&D (1d20 + Mod vs CD)
+            if (choice.skill && choice.dc) {
+                const h = gameState.hero;
+                const bardLuteBonus = (h.classId === 'bardo' && choice.skill === 'car') ? 1 : 0;
+                const mod = getMod(h.stats[choice.skill]) + (choice.skill === h.mainStat ? h.profBonus : 0) + bardLuteBonus;
+                const raw = rollDie(20);
+                const total = raw + mod;
+                const success = (raw === 20) || (raw !== 1 && total >= choice.dc);
+
+                showDiceAnimation({
+                    dieSides: 20,
+                    rawRoll: raw,
+                    modifier: mod,
+                    total: total,
+                    label: `${choice.skillName} (CD ${choice.dc})`,
+                    outcomeText: success ? 'Prova Superata!' : 'Prova Fallita!',
+                    isSuccess: success
+                });
+
+                addLogMessage(
+                    `🎲 <strong>${choice.skillName} (CD ${choice.dc})</strong>: 1d20(${raw}) ${formatMod(mod)} = <strong>${total}</strong> → <span class="${success ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}">${success ? 'SUCCESSO' : 'FALLIMENTO'}</span>`,
+                    'dice'
+                );
+
+                setTimeout(() => {
+                    enterNode(success ? choice.nextSuccess : choice.nextFail);
+                }, 650);
+                return;
+            }
+
+            // Se avvia un combattimento
+            if (choice.combat) {
+                startCombat(choice.combat, choice.nextWin, choice.weakenBoss || false);
+                return;
+            }
+
+            // Transizione semplice
+            if (choice.next) {
+                enterNode(choice.next);
+            }
+        }
+
+        /* =========================================================================
+           9. SISTEMA DI COMBATTIMENTO A TURNI D&D 5e
+           ========================================================================= */
+        function startCombat(monsterId, nextWinNode, weakenBoss = false) {
+            const template = MONSTERS[monsterId];
+            const startHp = weakenBoss ? Math.floor(template.maxHp * 0.65) : template.maxHp;
+
+            gameState.combat = {
+                enemyId: template.id,
+                name: template.name,
+                icon: template.icon,
+                hp: startHp,
+                maxHp: template.maxHp,
+                ac: template.ac,
+                attackBonus: template.attackBonus,
+                damageDie: template.damageDie,
+                damageBonus: template.damageBonus,
+                xpReward: template.xpReward,
+                goldReward: template.goldReward,
+                debuffTurns: 0,
+                nextWin: nextWinNode
+            };
+
+            gameState.hero.isDefending = false;
+            gameState.hero.bardicInspirationBonus = 0;
+            addLogMessage(`⚔️ <strong>Combattimento iniziato contro ${template.name}!</strong><br><span class="text-xs text-parchment-200/80">${template.desc}</span>`, 'combat');
+            renderAll();
+            saveGame();
+        }
+
+        function combatPlayerAction(actionType) {
+            const c = gameState.combat;
+            const h = gameState.hero;
+            if (!c || h.hp <= 0) return;
+
+            h.isDefending = false;
+            const mainMod = getMod(h.stats[h.mainStat]);
+            const weaponStatKey = h.weaponStat || h.mainStat;
+            const weaponMod = getMod(h.stats[weaponStatKey]);
+            const inspirationBonus = h.bardicInspirationBonus || 0;
+            const attackBonus = weaponMod + h.profBonus + inspirationBonus;
+
+            // 1. ATTACCO BASE CON ARMA
+            if (actionType === 'attack') {
+                if (inspirationBonus > 0) h.bardicInspirationBonus = 0;
+                const raw = rollDie(20);
+                const totalHit = raw + attackBonus;
+                const isCrit = raw === 20;
+                const isHit = isCrit || (raw !== 1 && totalHit >= c.ac);
+
+                showDiceAnimation({
+                    dieSides: 20,
+                    rawRoll: raw,
+                    modifier: attackBonus,
+                    total: totalHit,
+                    label: `Attacco vs CA ${c.ac}`,
+                    outcomeText: isCrit ? 'COLPO CRITICO!' : (isHit ? 'COLPITO!' : 'MANCATO!'),
+                    isSuccess: isHit
+                });
+
+                if (isHit) {
+                    playSound('hit');
+                    let dmg = rollDie(h.weaponDie) + weaponMod;
+                    if (isCrit) dmg += rollDie(h.weaponDie);
+                    dmg = Math.max(1, dmg);
+                    c.hp = Math.max(0, c.hp - dmg);
+
+                    const inspNote = inspirationBonus > 0 ? ` <span class="text-purple-300">(+Ispirazione!)</span>` : '';
+                    addLogMessage(`⚔️ Colpisci <strong>${c.name}</strong> con ${h.weaponName}${inspNote} (Tiro ${totalHit} vs CA ${c.ac}) e infliggi <strong class="text-gold-400">${dmg} danni</strong>!`, 'combat');
+                } else {
+                    addLogMessage(`💨 Sferri un colpo con ${h.weaponName} (Tiro ${totalHit} vs CA ${c.ac}), ma <strong>manchi il bersaglio</strong>!`, 'combat');
+                }
+            }
+
+            // 2. ABILITÀ / INCANTESIMO DI CLASSE
+            else if (actionType === 'ability') {
+                if (h.abilityType === 'vicious_mockery') {
+                    // Bardo: Beffa Crudele (Danni Psichici basati su Carisma + Debuff -3 al tiro nemico)
+                    playSound('crit');
+                    const dmg = Math.max(2, rollDie(h.abilityDie) + mainMod);
+                    c.hp = Math.max(0, c.hp - dmg);
+                    c.debuffTurns = 1;
+
+                    showDiceAnimation({
+                        dieSides: h.abilityDie,
+                        rawRoll: dmg,
+                        total: dmg,
+                        label: 'Beffa Crudele (CAR)',
+                        outcomeText: `${dmg} Psichici + Beffato!`,
+                        isSuccess: true
+                    });
+                    addLogMessage(`🎭 Lanci <strong>Beffa Crudele</strong> con parole taglienti: <strong>${c.name}</strong> subisce <strong class="text-purple-300">${dmg} danni psichici</strong> ed è scosso (<strong>-3 all'attacco</strong> nel prossimo turno)!`, 'combat');
+                } else if (h.abilityType === 'auto_damage') {
+                    // Mago: Dardo Incantato automatico
+                    playSound('crit');
+                    const dmg = rollDiceMultiple(h.abilityDiceCount, h.abilityDie) + h.abilityFlatBonus;
+                    c.hp = Math.max(0, c.hp - dmg);
+                    showDiceAnimation({
+                        dieSides: 4,
+                        rawRoll: dmg,
+                        total: dmg,
+                        label: h.abilityName,
+                        outcomeText: `${dmg} Danni Arcani!`,
+                        isSuccess: true
+                    });
+                    addLogMessage(`🔮 Scagli <strong>${h.abilityName}</strong>: dardi di energia pura colpiscono infallibilmente per <strong class="text-gold-400">${dmg} danni</strong>!`, 'combat');
+                } else if (h.abilityType === 'heal_and_smite') {
+                    // Chierico: Cura Ferite + Luce Sacra
+                    playSound('heal');
+                    const healAmt = rollDie(8) + mainMod;
+                    const actualHeal = Math.min(h.maxHp - h.hp, Math.max(2, healAmt));
+                    h.hp += actualHeal;
+                    const smiteDmg = rollDie(6) + Math.max(1, mainMod);
+                    c.hp = Math.max(0, c.hp - smiteDmg);
+
+                    showDiceAnimation({
+                        dieSides: 8,
+                        rawRoll: actualHeal,
+                        total: actualHeal,
+                        label: 'Luce Sacra',
+                        outcomeText: `+${actualHeal} PF & ${smiteDmg} Danni!`,
+                        isSuccess: true
+                    });
+                    addLogMessage(`☀️ Invochi <strong>${h.abilityName}</strong>: recuperi <strong class="text-emerald-400">+${actualHeal} PF</strong> e bruci il nemico per <strong class="text-gold-400">${smiteDmg} danni radiosi</strong>!`, 'combat');
+                } else {
+                    // Guerriero / Ladro: Attacco Speciale Potenziato
+                    const raw = rollDie(20);
+                    const totalHit = raw + attackBonus + h.abilityBonusHit;
+                    const isCrit = raw === 20;
+                    const isHit = isCrit || (raw !== 1 && totalHit >= c.ac);
+
+                    showDiceAnimation({
+                        dieSides: 20,
+                        rawRoll: raw,
+                        modifier: attackBonus + h.abilityBonusHit,
+                        total: totalHit,
+                        label: h.abilityName,
+                        outcomeText: isHit ? 'COLPO DEVASTANTE!' : 'PARATO!',
+                        isSuccess: isHit
+                    });
+
+                    if (isHit) {
+                        playSound('hit');
+                        let dmg = rollDiceMultiple(h.abilityDiceCount, h.abilityDie) + weaponMod;
+                        if (isCrit) dmg += rollDie(h.abilityDie);
+                        c.hp = Math.max(0, c.hp - dmg);
+                        addLogMessage(`💥 Esegui <strong>${h.abilityName}</strong> (Tiro ${totalHit}) infliggendo un massiccio totale di <strong class="text-gold-400">${dmg} danni</strong>!`, 'combat');
+                    } else {
+                        addLogMessage(`🛡️ Tenti <strong>${h.abilityName}</strong> (Tiro ${totalHit}), ma ${c.name} riesce a schivare all'ultimo!`, 'combat');
+                    }
+                }
+            }
+
+            // 2B. ISPIRAZIONE BARDICA / PAROLA GUARITRICE (Esclusiva Bardo)
+            else if (actionType === 'bard_heal') {
+                playSound('heal');
+                const healAmt = Math.max(2, rollDie(4) + mainMod);
+                const actualHeal = Math.min(h.maxHp - h.hp, healAmt);
+                h.hp += actualHeal;
+                const inspDie = rollDie(6);
+                h.bardicInspirationBonus = inspDie;
+
+                showDiceAnimation({
+                    dieSides: 6,
+                    rawRoll: inspDie,
+                    total: inspDie,
+                    label: 'Ispirazione & Cura',
+                    outcomeText: `+${actualHeal} PF & +${inspDie} Attacco!`,
+                    isSuccess: true
+                });
+                addLogMessage(`🪕 Suoni una nota celestiale con <strong>Parola Guaritrice & Ispirazione</strong>: recuperi <strong class="text-emerald-400">+${actualHeal} PF</strong> e ottieni <strong class="text-gold-400">+${inspDie}</strong> al tuo prossimo tiro per colpire!`, 'combat');
+            }
+
+            // 3. POZIONE DI CURA RAPIDA
+            else if (actionType === 'potion') {
+                const potion = h.inventory.find(i => i.id === 'potion_heal' && i.qty > 0);
+                if (!potion) {
+                    addLogMessage("Non hai più Pozioni di Cura nello zaino!", "system");
+                    return;
+                }
+                useInventoryItem('potion_heal');
+            }
+
+            // 4. DIFESA / SCHIVATA (+2 CA fino al prossimo turno)
+            else if (actionType === 'defend') {
+                h.isDefending = true;
+                addLogMessage(`🛡️ Assumi una <strong>posizione difensiva</strong> (+2 alla CA fino al prossimo turno).`, 'combat');
+            }
+
+            // Controllo vittoria o turno del nemico
+            if (c.hp <= 0) {
+                handleCombatVictory();
+            } else {
+                renderAll();
+                setTimeout(enemyTurn, 950);
+            }
+        }
+
+        function enemyTurn() {
+            const c = gameState.combat;
+            const h = gameState.hero;
+            if (!c || c.hp <= 0 || h.hp <= 0) return;
+
+            const effectiveAC = h.ac + (h.isDefending ? 2 : 0);
+            const isMocked = c.debuffTurns > 0;
+            const debuffPenalty = isMocked ? 3 : 0;
+            if (isMocked) c.debuffTurns = 0;
+
+            const raw = rollDie(20);
+            const totalHit = raw + c.attackBonus - debuffPenalty;
+            const isCrit = raw === 20;
+            const isHit = isCrit || (raw !== 1 && totalHit >= effectiveAC);
+            const mockNote = isMocked ? ` <span class="text-purple-300">(Beffato -3)</span>` : '';
+
+            if (isHit) {
+                playSound('hit');
+                let dmg = rollDie(c.damageDie) + c.damageBonus;
+                if (isCrit) dmg += rollDie(c.damageDie);
+                dmg = Math.max(1, dmg);
+                h.hp = Math.max(0, h.hp - dmg);
+
+                addLogMessage(`${c.icon} <strong>${c.name}</strong> ti attacca${mockNote} (Tiro ${totalHit} vs tua CA ${effectiveAC}) e ti infligge <strong class="text-red-400">${dmg} danni</strong>!`, 'combat');
+            } else {
+                addLogMessage(`${c.icon} <strong>${c.name}</strong> ti attacca${mockNote} (Tiro ${totalHit} vs CA ${effectiveAC}), ma <strong>riesci a evitare il colpo</strong>!`, 'combat');
+            }
+
+            if (h.hp <= 0) {
+                handlePlayerDefeat();
+            } else {
+                renderAll();
+                saveGame();
+            }
+        }
+
+        function handleCombatVictory() {
+            const c = gameState.combat;
+            const nextWinNode = c.nextWin;
+
+            playSound('crit');
+            addLogMessage(`🏆 <strong>Vittoria!</strong> Hai sconfitto <strong>${c.name}</strong>! (+${c.xpReward} PE, +${c.goldReward} Oro)`, 'system');
+
+            gameState.hero.gold += c.goldReward;
+            gainXP(c.xpReward);
+            gameState.combat = null;
+
+            renderAll();
+            saveGame();
+
+            setTimeout(() => {
+                if (nextWinNode) enterNode(nextWinNode);
+            }, 900);
+        }
+
+        function handlePlayerDefeat() {
+            playSound('fail');
+            addLogMessage(`💀 <strong>Sei caduto in battaglia...</strong> Le tenebre di Oakhaven avvolgono i tuoi sensi.`, 'combat');
+            renderAll();
+        }
+
+        function reviveAtTavern() {
+            const h = gameState.hero;
+            h.hp = h.maxHp;
+            h.gold = Math.max(0, h.gold - 10);
+            gameState.combat = null;
+            addLogMessage(`✨ Un chierico errante ti ha tratto in salvo riportandoti alla Taverna (hai perso 10 Oro per le cure).`, 'system');
+            enterNode('start');
+        }
+
+        /* =========================================================================
+           10. SCHEDA PERSONAGGIO, INVENTARIO E LEVEL UP
+           ========================================================================= */
+        function openSheetModal() {
+            renderSheetModal();
+            document.getElementById('modal-sheet').classList.remove('hidden');
+        }
+
+        function closeSheetModal() {
+            document.getElementById('modal-sheet').classList.add('hidden');
+            toggleResetConfirm(false);
+        }
+
+        function toggleResetConfirm(show) {
+            document.getElementById('reset-confirm-box').classList.toggle('hidden', !show);
+            document.getElementById('btn-show-reset').classList.toggle('hidden', show);
+        }
+
+        function confirmResetGame() {
+            localStorage.removeItem(SAVE_KEY);
+            closeSheetModal();
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-creation').classList.remove('hidden');
+            document.getElementById('resume-box').classList.add('hidden');
+            initCreationScreen();
+        }
+
+        function useInventoryItem(itemId) {
+            const h = gameState.hero;
+            const item = h.inventory.find(i => i.id === itemId);
+            if (!item || item.qty <= 0) return;
+
+            if (item.type === 'heal') {
+                if (h.hp >= h.maxHp) {
+                    addLogMessage("Hai già i Punti Ferita al massimo!", "system");
+                    return;
+                }
+                const healAmount = rollDiceMultiple(2, 4) + 2;
+                const actualHeal = Math.min(h.maxHp - h.hp, healAmount);
+                h.hp += actualHeal;
+                item.qty -= 1;
+
+                playSound('heal');
+                showDiceAnimation({
+                    dieSides: 4,
+                    rawRoll: actualHeal,
+                    total: actualHeal,
+                    label: 'Pozione di Cura',
+                    outcomeText: `+${actualHeal} Punti Ferita!`,
+                    isSuccess: true
+                });
+                addLogMessage(`🧪 Bevi una <strong>Pozione di Cura</strong> e recuperi <strong class="text-emerald-400">+${actualHeal} PF</strong>!`, 'system');
+
+                if (item.qty <= 0) {
+                    h.inventory = h.inventory.filter(i => i.id !== itemId);
+                }
+
+                renderAll();
+                renderSheetModal();
+                saveGame();
+            } else {
+                addLogMessage(`🔍 Esamini <strong>${item.name}</strong>: ${item.desc}.`, 'system');
+                closeSheetModal();
+            }
+        }
+
+        function performLevelUp() {
+            const h = gameState.hero;
+            if (h.xp < h.xpNext) return;
+
+            h.level += 1;
+            h.xp -= h.xpNext;
+            h.xpNext = Math.round(h.xpNext * 1.5);
+
+            const hpGain = 6 + Math.max(1, getMod(h.stats.cos));
+            h.maxHp += hpGain;
+            h.hp = h.maxHp;
+            h.stats[h.mainStat] += 1;
+            if (h.level % 2 === 1) h.profBonus += 1;
+
+            playSound('crit');
+            document.getElementById('levelup-badge').classList.add('hidden');
+            addLogMessage(`🎉 <strong>LEVEL UP! Sei ora al Livello ${h.level}!</strong> PF Massimi +${hpGain} (curato completamente) e +1 a ${h.mainStat.toUpperCase()}!`, 'system');
+
+            renderAll();
+            renderSheetModal();
+            saveGame();
+        }
+
+        function renderSheetModal() {
+            const h = gameState.hero;
+            document.getElementById('sheet-title').textContent = `${h.icon} ${h.name}`;
+            document.getElementById('sheet-subtitle').textContent = `${h.raceName} ${h.className} • Livello ${h.level}`;
+
+            // XP
+            const xpPct = Math.min(100, Math.round((h.xp / h.xpNext) * 100));
+            document.getElementById('sheet-xp-text').textContent = `${h.xp} / ${h.xpNext} PE`;
+            document.getElementById('sheet-xp-bar').style.width = `${xpPct}%`;
+
+            const btnLvl = document.getElementById('btn-levelup');
+            if (h.xp >= h.xpNext) {
+                btnLvl.classList.remove('hidden');
+            } else {
+                btnLvl.classList.add('hidden');
+            }
+
+            // 6 Caratteristiche
+            const statNames = {
+                for: 'Forza', des: 'Destrezza', cos: 'Costituzione',
+                int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma'
+            };
+            document.getElementById('sheet-stats-grid').innerHTML = Object.keys(statNames).map(k => {
+                const val = h.stats[k];
+                const mod = getMod(val);
+                return `
+                    <div class="bg-parchment-950 border border-gold-500/25 rounded-xl p-2 text-center">
+                        <span class="block text-[10px] uppercase text-parchment-200/60 font-semibold">${statNames[k]}</span>
+                        <span class="block font-fantasy font-extrabold text-lg text-parchment-100 leading-tight">${formatMod(mod)}</span>
+                        <span class="inline-block text-[11px] bg-parchment-800 text-gold-400 px-2 rounded-full mt-0.5">${val}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('sheet-weapon').textContent = `${h.weaponName} (1d${h.weaponDie})`;
+            document.getElementById('sheet-skill').textContent = h.secondaryAbilityName
+                ? `${h.abilityName} / ${h.secondaryAbilityName}`
+                : h.abilityName;
+
+            // Inventario
+            const invContainer = document.getElementById('sheet-inventory');
+            if (h.inventory.length === 0) {
+                invContainer.innerHTML = `<p class="text-xs text-parchment-200/50 italic">Lo zaino è vuoto.</p>`;
+            } else {
+                invContainer.innerHTML = h.inventory.map(item => `
+                    <div class="bg-parchment-950 border border-gold-500/20 rounded-xl p-2.5 flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="text-xl">${item.icon}</span>
+                            <div>
+                                <p class="text-xs font-bold text-parchment-100">${item.name} <span class="text-gold-400">x${item.qty}</span></p>
+                                <p class="text-[11px] text-parchment-200/60">${item.desc}</p>
+                            </div>
+                        </div>
+                        <button onclick="useInventoryItem('${item.id}')"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${item.type === 'heal' ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : 'bg-parchment-800 text-gold-400 border border-gold-500/30'}">
+                            ${item.type === 'heal' ? 'Bevi' : 'Usa'}
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        /* =========================================================================
+           11. RENDERING UI PRINCIPALE & PULSANTI CONTESTUALI
+           ========================================================================= */
+        function renderAll() {
+            const h = gameState.hero;
+            const c = gameState.combat;
+
+            // Aggiorna HUD Header
+            document.getElementById('hud-icon').textContent = h.icon;
+            document.getElementById('hud-name').textContent = h.name;
+            document.getElementById('hud-lvl').textContent = `Lv.${h.level}`;
+            document.getElementById('hud-ac').textContent = h.ac + (h.isDefending ? 2 : 0);
+            document.getElementById('hud-gold').textContent = h.gold;
+
+            const hpPct = Math.max(0, Math.min(100, (h.hp / h.maxHp) * 100));
+            document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
+            document.getElementById('hud-hp-text').textContent = `${h.hp}/${h.maxHp}`;
+
+            if (h.xp >= h.xpNext) {
+                document.getElementById('levelup-badge').classList.remove('hidden');
+            }
+
+            // Banner Combattimento
+            const combatBanner = document.getElementById('combat-banner');
+            const actionContainer = document.getElementById('action-buttons');
+
+            if (h.hp <= 0) {
+                combatBanner.classList.add('hidden');
+                actionContainer.innerHTML = `
+                    <button onclick="reviveAtTavern()" class="w-full bg-gradient-to-r from-blood-700 to-red-700 text-white font-fantasy font-bold py-3.5 px-4 rounded-xl shadow-lg btn-press">
+                        🕯️ Risvegliati alla Taverna (-10 Oro)
+                    </button>
+                `;
+                return;
+            }
+
+            if (c) {
+                // Modalità Combattimento
+                combatBanner.classList.remove('hidden');
+                document.getElementById('enemy-icon').textContent = c.icon;
+                document.getElementById('enemy-name').textContent = c.name;
+                document.getElementById('enemy-ac').textContent = `CA ${c.ac}`;
+                document.getElementById('enemy-debuff').classList.toggle('hidden', !(c.debuffTurns > 0));
+                document.getElementById('enemy-hp-text').textContent = `${c.hp} / ${c.maxHp}`;
+                document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (c.hp / c.maxHp) * 100)}%`;
+
+                const potionCount = (h.inventory.find(i => i.id === 'potion_heal') || { qty: 0 }).qty;
+                const inspBadge = h.bardicInspirationBonus > 0 ? ` (+${h.bardicInspirationBonus})` : '';
+
+                actionContainer.className = 'grid grid-cols-2 gap-2';
+                actionContainer.innerHTML = `
+                    <button onclick="combatPlayerAction('attack')" class="bg-gradient-to-b from-blood-700 to-blood-900 border border-red-500/40 text-parchment-100 p-3 rounded-xl text-left transition btn-press">
+                        <span class="block font-fantasy font-bold text-xs text-red-200">⚔️ Attacco${inspBadge}</span>
+                        <span class="block text-[11px] text-parchment-200/80 truncate">${h.weaponName} (1d${h.weaponDie})</span>
+                    </button>
+
+                    <button onclick="combatPlayerAction('ability')" class="bg-gradient-to-b from-gold-600/40 to-parchment-800 border border-gold-500/50 text-parchment-100 p-3 rounded-xl text-left transition btn-press">
+                        <span class="block font-fantasy font-bold text-xs text-gold-400">✨ ${h.abilityName}</span>
+                        <span class="block text-[11px] text-parchment-200/80 truncate">${h.classId === 'bardo' ? '1d6+CAR & -3 Tiro' : 'Potere di Classe'}</span>
+                    </button>
+
+                    ${h.classId === 'bardo' ? `
+                    <button onclick="combatPlayerAction('bard_heal')" class="bg-gradient-to-b from-purple-900/60 to-parchment-800 border border-purple-400/50 text-parchment-100 p-3 rounded-xl text-left transition btn-press">
+                        <span class="block font-bold text-xs text-purple-300">🪕 Parola & Ispiraz.</span>
+                        <span class="block text-[11px] text-parchment-200/75 truncate">Cura 1d4+CAR & +1d6</span>
+                    </button>
+                    ` : `
+                    <button onclick="combatPlayerAction('defend')" class="bg-parchment-800 border border-sky-500/40 text-parchment-100 p-3 rounded-xl text-left transition btn-press">
+                        <span class="block font-bold text-xs text-sky-400">🛡️ Difesa</span>
+                        <span class="block text-[11px] text-parchment-200/70">+2 CA nel turno</span>
+                    </button>
+                    `}
+
+                    <button onclick="combatPlayerAction('potion')" ${potionCount === 0 ? 'disabled' : ''} class="bg-parchment-800 border border-emerald-500/40 text-parchment-100 p-3 rounded-xl text-left transition btn-press disabled:opacity-40">
+                        <span class="block font-bold text-xs text-emerald-400">🧪 Pozione (${potionCount})</span>
+                        <span class="block text-[11px] text-parchment-200/70">Cura 2d4+2 PF</span>
+                    </button>
+                `;
+            } else {
+                // Modalità Esplorazione / Scelte Narrative
+                combatBanner.classList.add('hidden');
+                const node = STORY_NODES[gameState.currentNodeId];
+                actionContainer.className = 'grid grid-cols-1 gap-2';
+
+                const visibleChoices = node.choices
+                    .map((ch, idx) => ({ ch, idx }))
+                    .filter(({ ch }) => !ch.reqClass || ch.reqClass === h.classId);
+
+                actionContainer.innerHTML = visibleChoices.map(({ ch, idx }) => {
+                    let badge = '';
+                    if (ch.skill && ch.dc) {
+                        const bardLuteBonus = (h.classId === 'bardo' && ch.skill === 'car') ? 1 : 0;
+                        const mod = getMod(h.stats[ch.skill]) + (ch.skill === h.mainStat ? h.profBonus : 0) + bardLuteBonus;
+                        const classTag = ch.reqClass === 'bardo' ? '🎭 ' : '';
+                        badge = `<span class="inline-block bg-gold-500/20 text-gold-400 border border-gold-500/40 text-[11px] font-bold px-2 py-0.5 rounded mr-1.5">[${classTag}${ch.skillName} CD ${ch.dc} • ${formatMod(mod)}]</span>`;
+                    } else if (ch.combat) {
+                        badge = `<span class="inline-block bg-red-500/20 text-red-300 border border-red-500/40 text-[11px] font-bold px-2 py-0.5 rounded mr-1.5">[Combattimento]</span>`;
+                    }
+
+                    return `
+                        <button onclick="handleChoice(${idx})" class="w-full bg-parchment-800 hover:bg-parchment-700 border border-gold-500/35 text-parchment-100 px-3.5 py-3 rounded-xl text-left text-sm font-medium transition btn-press flex items-center justify-between">
+                            <span class="leading-snug">${badge}${ch.label}</span>
+                            <span class="text-gold-500 ml-2 shrink-0">›</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Avvio all'apertura della pagina
+        window.onload = function () {
+            initCreationScreen();
+        };
+    </script>
+</body>
+</html>
